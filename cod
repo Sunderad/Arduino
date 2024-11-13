@@ -1,0 +1,168 @@
+#include <AFMotor.h>
+
+AF_DCMotor motor1(1, MOTOR12_1KHZ); // tái sau 
+AF_DCMotor motor2(2, MOTOR12_1KHZ); // phải sau
+AF_DCMotor motor3(3, MOTOR34_1KHZ); // phải trước 
+AF_DCMotor motor4(4, MOTOR34_1KHZ); // trái trước 
+
+// nối chân out của sensors từ phải qua trái 1 2 3 4 
+int sensor1 = A0; 
+int sensor2 = A1;
+int sensor3 = A4;
+int sensor4 = A5; 
+
+int motorSpeed = 255;  // set tốc độ cho motor
+int case2Counter = 0;  // dùng để đối phó với cái ô thủng
+
+// điều hướng xe
+void setMotor(AF_DCMotor &motor, int speed, bool forward) { // boolean là định dạng true false cho biến
+    motor.setSpeed(speed);
+    motor.run(forward ? FORWARD : BACKWARD); // bool được dùng cho hàm này true thì tiến và false thì lùi
+}
+
+// hàm dừng
+void stopMotors() {
+    motor1.run(RELEASE);
+    motor2.run(RELEASE);
+    motor3.run(RELEASE);
+    motor4.run(RELEASE);
+}
+
+// hàm tiến
+void runAllForward() {
+    setMotor(motor1, motorSpeed, true);
+    setMotor(motor2, motorSpeed, true);
+    setMotor(motor3, motorSpeed, true);
+    setMotor(motor4, motorSpeed, true);
+}
+
+// hàm này để lưu lại số lần mà cái sensor bắt được line hay không (sẽ được lưu vào cái sensor value ) 
+void updateSensors(int sensorValues[]) {
+    sensorValues[0] = digitalRead(sensor1); //lưu ý là cái ssValues đang là 1 array và trong arrey vị trí đầu tiền là 0.
+    sensorValues[1] = digitalRead(sensor2);
+    sensorValues[2] = digitalRead(sensor3);
+    sensorValues[3] = digitalRead(sensor4); 
+}
+
+// handlecases là 9 trường hợp đã nói đến và dùng cái sensorvalue để trả ra điều hướng cho từng trường hợp
+void handleCases(int sensorValues[]) {
+    if (sensorValues[0] == 0 && sensorValues[1] == 0 && sensorValues[2] == 0 && sensorValues[3] == 0) {
+        // Case 1: 0 0 0 0, all motors forward
+        Serial.println("motors all run forward");
+        Serial.println("     ");
+
+        runAllForward();
+        case2Counter = 0; // Reset case 2 counter when in case 1
+    } 
+    else if (sensorValues[0] == 1 && sensorValues[1] == 0 && sensorValues[2] == 0 && sensorValues[3] == 0) {
+        // Case 2: 1 0 0 0
+        case2Counter++;
+        if (case2Counter < 4) {
+            Serial.println("motors all run forward");
+            runAllForward(); // Ignore case 2 for the first 3 encounters
+        } else {
+            // Execute case 2 actions on the 4th encounter
+            setMotor(motor1, motorSpeed, true);
+            setMotor(motor4, motorSpeed, true);
+            setMotor(motor2, motorSpeed, false);
+            setMotor(motor3, motorSpeed, false);
+            Serial.println("turn right");
+            Serial.println("     ");
+
+        }
+    } 
+    else if (sensorValues[0] == 1 && sensorValues[1] == 1 && sensorValues[2] == 0 && sensorValues[3] == 0) {
+        // Case 3: 1 1 0 0
+        setMotor(motor1, motorSpeed, true);
+        setMotor(motor4, motorSpeed, true);
+        setMotor(motor2, motorSpeed, false);
+        setMotor(motor3, motorSpeed, false);
+        Serial.println("turn right");
+        Serial.println("     ");
+
+    } 
+    else if (sensorValues[0] == 1 && sensorValues[1] == 1 && sensorValues[2] == 1 && sensorValues[3] == 0) {
+        // Case 4: 1 1 1 0
+        setMotor(motor1, motorSpeed, true);
+        setMotor(motor4, motorSpeed, true);
+        setMotor(motor2, motorSpeed, false);
+        setMotor(motor3, motorSpeed, false);
+        Serial.println("turn right");
+        Serial.println("     ");
+
+    } 
+    else if (sensorValues[0] == 1 && sensorValues[1] == 1 && sensorValues[2] == 1 && sensorValues[3] == 1) {
+        // Case 5: 1 1 1 1, stop all motors
+        Serial.println("stop all");
+        Serial.println("     ");
+        stopMotors();
+    } 
+    else if (sensorValues[0] == 0 && sensorValues[1] == 0 && sensorValues[2] == 0 && sensorValues[3] == 1) {
+        // Case 6: 0 0 0 1
+        setMotor(motor1, motorSpeed, false);
+        setMotor(motor4, motorSpeed, false);
+        setMotor(motor2, motorSpeed, true);
+        setMotor(motor3, motorSpeed, true);
+        Serial.println("turn left");
+        Serial.println("     ");
+
+        
+        
+    } 
+    else if (sensorValues[0] == 0 && sensorValues[1] == 0 && sensorValues[2] == 1 && sensorValues[3] == 1) {
+        // Case 7: 0 0 1 1
+        setMotor(motor1, motorSpeed, false);
+        setMotor(motor4, motorSpeed, false);
+        setMotor(motor2, motorSpeed, true);
+        setMotor(motor3, motorSpeed, true);
+        Serial.println("turn left");
+        Serial.println("     ");
+
+    } 
+    else if (sensorValues[0] == 0 && sensorValues[1] == 1 && sensorValues[2] == 1 && sensorValues[3] == 1) {
+        // Case 8: 0 1 1 1
+        setMotor(motor1, motorSpeed, false);
+        setMotor(motor4, motorSpeed, false);
+        setMotor(motor2, motorSpeed, true);
+        setMotor(motor3, motorSpeed, true);
+        Serial.println("turn left");
+        Serial.println("     ");
+
+    } 
+    else if (sensorValues[0] == 1 && sensorValues[1] == 0 && sensorValues[2] == 0 && sensorValues[3] == 1) {
+        // Case 9: 1 0 0 1, all motors forward
+        Serial.println("motors run forward");
+        Serial.println("     ");
+        runAllForward();
+    } 
+    else if (sensorValues[0] == 0 && sensorValues[1] == 1 && sensorValues[2] == 1 && sensorValues[3] == 0) {
+        // Case 10: 0 1 1 0, execute case 6
+        setMotor(motor1, motorSpeed, false);
+        setMotor(motor4, motorSpeed, false);
+        setMotor(motor2, motorSpeed, true);
+        setMotor(motor3, motorSpeed, true);
+        Serial.println("turn left");
+        Serial.println("     ");
+
+    }
+}
+
+void setup() {
+    Serial.begin(9600);
+    pinMode(sensor1, INPUT);
+    pinMode(sensor2, INPUT);
+    pinMode(sensor3, INPUT);
+    pinMode(sensor4, INPUT);
+    
+    motor1.setSpeed(motorSpeed);
+    motor2.setSpeed(motorSpeed);
+    motor3.setSpeed(motorSpeed);
+    motor4.setSpeed(motorSpeed);
+}
+
+void loop() {
+    int sensorValues[3];
+    updateSensors(sensorValues);
+    handleCases(sensorValues);
+}
+
